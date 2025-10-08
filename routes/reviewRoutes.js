@@ -6,7 +6,10 @@ const auth = require("../middleware/authMiddleware");
 // Add a review (only logged-in users)
 router.post("/", auth, reviewController.createReview);
 
-// Get all reviews for a meal
+// Get reviews for a specific meal (public)
 router.get("/:mealId", reviewController.getMealReviews);
+
+// Get all reviews (public)
+router.get("/", reviewController.getAllReviews);
 
 module.exports = router;

@@ -1,7 +1,7 @@
 const Review = require("../models/Review");
 const Meal = require("../models/Meal");
 
-// Create a new review
+// Create a new review (only logged-in users)
 exports.createReview = async (req, res) => {
   try {
     const { mealId, rating, comment } = req.body;
@@ -17,7 +17,7 @@ exports.createReview = async (req, res) => {
       return res.status(404).json({ message: "Meal not found" });
     }
 
-    // Prevent multiple reviews from same user for same meal
+    // Prevent multiple reviews from same user for the same meal
     const existingReview = await Review.findOne({ user: userId, meal: mealId });
     if (existingReview) {
       return res.status(400).json({ message: "You have already reviewed this meal" });
@@ -37,15 +37,27 @@ exports.createReview = async (req, res) => {
   }
 };
 
-// Get reviews for a meal
+// Get reviews for a specific meal (public)
 exports.getMealReviews = async (req, res) => {
   try {
     const mealId = req.params.mealId;
 
     const reviews = await Review.find({ meal: mealId })
-      .populate("user", "name email") // show who wrote it
+      .populate("user", "name email")
       .sort({ createdAt: -1 });
 
+    res.json(reviews);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Get all reviews (public)
+exports.getAllReviews = async (req, res) => {
+  try {
+    const reviews = await Review.find()
+      .populate("user", "name email")
+      .populate("meal", "name"); // optional: show meal name
     res.json(reviews);
   } catch (err) {
     res.status(500).json({ error: err.message });
