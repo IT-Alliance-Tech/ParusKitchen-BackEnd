@@ -4,17 +4,19 @@ const adminDashboardController = require('../controllers/adminDashboardControlle
 const auth = require('../middleware/authMiddleware');
 const adminMiddleware = require('../middleware/adminMiddleware');
 
-// Total orders
-router.get('/total-orders', auth, adminMiddleware, adminDashboardController.getTotalOrders);
+// Protect all routes
+router.use(auth);
+router.use(adminMiddleware);
 
-// Total meals
-router.get('/total-meals', auth, adminMiddleware, adminDashboardController.getTotalMeals);
+// Dashboard stats
+router.get('/total-orders', adminDashboardController.getTotalOrders);
+router.get('/total-meals', adminDashboardController.getTotalMeals);
+router.get('/total-users', adminDashboardController.getTotalUsers);
+router.get('/revenue', adminDashboardController.getRevenue);
 
-// Total users
-router.get('/total-users', auth, adminMiddleware, adminDashboardController.getTotalUsers);
-
-// Optional: Revenue stats
-router.get('/revenue', auth, adminMiddleware, adminDashboardController.getRevenue);
-
+// User management
+router.get('/users', adminDashboardController.getAllUsers);
+router.put('/users/:id', adminDashboardController.updateUser);
+router.delete('/users/:id', adminDashboardController.deleteUser);
 
 module.exports = router;

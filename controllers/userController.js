@@ -42,6 +42,9 @@ exports.signup = async (req, res) => {
 // =======================
 // Login API
 // =======================
+// =======================
+// Login API
+// =======================
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -61,14 +64,19 @@ exports.login = async (req, res) => {
       { expiresIn: '1h' }
     );
 
+    console.log("Login response user:", user);
+
+    // Send response in format frontend expects
     res.json({
-      message: 'Login successful',
       token,
-      userId: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role
+      user: {
+        id: user._id,       // id key for frontend
+        name: user.name,
+        email: user.email,
+        role: user.role
+      }
     });
+
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

@@ -8,32 +8,19 @@ const app = express();
 // Middleware
 app.use(cors());
 app.use(express.json());
+
 // Routes
-const mealRoutes = require('./routes/mealRoutes');
-app.use('/api/meals', mealRoutes);
+app.use('/api/meals', require('./routes/mealRoutes'));
+app.use('/api/categories', require('./routes/categoryRoutes'));
+app.use('/api/users', require('./routes/userRoutes'));
+app.use('/api/orders', require('./routes/orderRoutes'));
+app.use('/api/cart', require('./routes/cartRoutes'));
+app.use('/api/reviews', require('./routes/reviewRoutes'));
+app.use('/api/admin/dashboard', require('./routes/adminDashboardRoutes'));
 
-const categoryRoutes = require('./routes/categoryRoutes');
-app.use('/api/categories', categoryRoutes);
-
-const userRoutes = require('./routes/userRoutes');
-app.use('/api/users', userRoutes);
-
-const orderRoutes = require('./routes/orderRoutes');
-app.use('/api/orders', orderRoutes);
-
-const cartRoutes = require('./routes/cartRoutes');
-app.use('/api/cart', cartRoutes);
-
-const reviewRoutes = require("./routes/reviewRoutes");
-app.use("/api/reviews", reviewRoutes);
-
-const adminDashboardRoutes = require('./routes/adminDashboardRoutes');
-app.use('/api/admin/dashboard', adminDashboardRoutes);
-
-
-
-
-
+// Commented out because file doesn't exist
+// const adminRoutes = require("./routes/adminRoutes");
+// app.use("/api/admin", adminRoutes);
 
 // MongoDB connection
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/paroose_kitchen';
