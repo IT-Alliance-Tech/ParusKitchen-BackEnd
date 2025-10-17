@@ -17,6 +17,9 @@ app.use('/api/orders', require('./routes/orderRoutes'));
 app.use('/api/cart', require('./routes/cartRoutes'));
 app.use('/api/reviews', require('./routes/reviewRoutes'));
 app.use('/api/admin/dashboard', require('./routes/adminDashboardRoutes'));
+const adminDashboardRoutes = require('./routes/adminDashboardRoutes');
+app.use('/api/admin', adminDashboardRoutes);
+
 
 // Commented out because file doesn't exist
 // const adminRoutes = require("./routes/adminRoutes");
