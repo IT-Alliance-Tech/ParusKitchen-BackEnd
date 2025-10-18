@@ -1,72 +1,79 @@
-const SubscriptionPlan = require('../models/SubscriptionPlan');
+// backend/controllers/adminSubscriptionController.js
+const SubscriptionPlan = require("../models/SubscriptionPlan");
 
-// Get all subscription plans
+// GET all subscriptions (admin)
 exports.getAllSubscriptions = async (req, res) => {
   try {
-    const plans = await SubscriptionPlan.find();
-    res.json(plans);
+    const subscriptions = await SubscriptionPlan.find();
+    res.status(200).json(subscriptions);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ message: "Server error", error: err.message });
   }
 };
 
-// Get subscription plan by ID
+// GET single subscription by ID (admin)
 exports.getSubscriptionById = async (req, res) => {
   try {
-    const plan = await SubscriptionPlan.findById(req.params.id);
-    if (!plan) return res.status(404).json({ message: "Subscription plan not found" });
-    res.json(plan);
+    const subscription = await SubscriptionPlan.findById(req.params.id);
+    if (!subscription) return res.status(404).json({ message: "Not found" });
+    res.status(200).json(subscription);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ message: "Server error", error: err.message });
   }
 };
 
-// Create a new subscription plan
+// CREATE subscription (admin)
 exports.createSubscription = async (req, res) => {
   try {
-    const { name, price, mealsIncluded, deliveryAddOn } = req.body;
-    if (!name || !price || !mealsIncluded) {
-      return res.status(400).json({ message: "Missing required fields" });
-    }
-
-    const newPlan = new SubscriptionPlan({ name, price, mealsIncluded, deliveryAddOn });
-    await newPlan.save();
-    res.status(201).json({ message: "Subscription plan created successfully", plan: newPlan });
+    const newPlan = new SubscriptionPlan(req.body);
+    const savedPlan = await newPlan.save();
+    res.status(201).json(savedPlan);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(400).json({ message: "Invalid data", error: err.message });
   }
 };
 
-// Update a subscription plan
+// UPDATE subscription (admin)
 exports.updateSubscription = async (req, res) => {
   try {
-    const { name, price, mealsIncluded, deliveryAddOn, isActive } = req.body;
-    const plan = await SubscriptionPlan.findById(req.params.id);
-    if (!plan) return res.status(404).json({ message: "Subscription plan not found" });
-
-    if (name) plan.name = name;
-    if (price) plan.price = price;
-    if (mealsIncluded) plan.mealsIncluded = mealsIncluded;
-    if (deliveryAddOn !== undefined) plan.deliveryAddOn = deliveryAddOn;
-    if (isActive !== undefined) plan.isActive = isActive;
-
-    await plan.save();
-    res.json({ message: "Subscription plan updated successfully", plan });
+    const updatedPlan = await SubscriptionPlan.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true }
+    );
+    if (!updatedPlan) return res.status(404).json({ message: "Not found" });
+    res.status(200).json(updatedPlan);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(400).json({ message: "Invalid data", error: err.message });
   }
 };
 
-// Delete / deactivate a subscription plan
+// DELETE subscription (admin)
 exports.deleteSubscription = async (req, res) => {
   try {
-    const plan = await SubscriptionPlan.findById(req.params.id);
-    if (!plan) return res.status(404).json({ message: "Subscription plan not found" });
-
-    plan.isActive = false; // just deactivate instead of deleting
-    await plan.save();
-    res.json({ message: "Subscription plan deactivated successfully", plan });
+    const deletedPlan = await SubscriptionPlan.findByIdAndDelete(req.params.id);
+    if (!deletedPlan) return res.status(404).json({ message: "Not found" });
+    res.status(200).json({ message: "Subscription deleted successfully" });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+// PAUSE/RESUME subscription (admin)
+exports.updateSubscriptionStatus = async (req, res) => {
+  try {
+    const { status } = req.body;
+    if (!["active", "paused"].includes(status))
+      return res.status(400).json({ message: "Invalid status" });
+
+    const updatedPlan = await SubscriptionPlan.findByIdAndUpdate(
+      req.params.id,
+      { status },
+      { new: true }
+    );
+    if (!updatedPlan) return res.status(404).json({ message: "Not found" });
+    res.status(200).json(updatedPlan);
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
   }
 };
