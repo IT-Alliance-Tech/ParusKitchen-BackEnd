@@ -33,5 +33,7 @@ router.delete('/menus/:id', adminDashboardController.deleteMenuItem); // <-- NEW
 // Get all orders
 router.get('/orders', adminDashboardController.getAllOrders);
 
+router.post('/subscriptions', adminDashboardController.createSubscriptions);
+
 
 module.exports = router;
