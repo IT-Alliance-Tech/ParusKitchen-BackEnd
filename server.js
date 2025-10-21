@@ -29,16 +29,13 @@ app.use('/api/cart', require('./routes/cartRoutes'));
 app.use('/api/reviews', require('./routes/reviewRoutes'));
 
 // Admin Dashboard
-const adminDashboardRoutes = require('./routes/adminDashboardRoutes');
-app.use('/api/admin/dashboard', adminDashboardRoutes);
+app.use('/api/admin/dashboard', require('./routes/adminDashboardRoutes'));
 
-// Admin Subscription (for admin controls)
-const adminSubscriptionRoutes = require('./routes/adminSubscriptionRoutes');
-app.use('/api/admin/subscriptions', adminSubscriptionRoutes);
+// Admin Subscriptions
+app.use('/api/admin/subscriptions', require('./routes/adminSubscriptionRoutes'));
 
-// Frontend Subscription (for general users to view plans)
-const subscriptionRoutes = require('./routes/subscriptionRoutes');
-app.use('/api/subscriptions', subscriptionRoutes);
+// Frontend Subscriptions (for users)
+app.use('/api/subscriptions', require('./routes/subscriptionRoutes'));
 
 // ====================== MONGODB CONNECTION ======================
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/paroose_kitchen';
