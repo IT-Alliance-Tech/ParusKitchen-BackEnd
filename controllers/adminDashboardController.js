@@ -2,7 +2,7 @@
 const Order = require('../models/Order');
 const Meal = require('../models/Meal');
 const User = require('../models/User');
-
+const Subscription = require('../models/SubscriptionPlan');
 // =======================
 // TOTAL STATS
 // =======================
@@ -237,5 +237,39 @@ exports.deleteMenuItem = async (req, res) => {
     res.status(200).json({ message: "deleteMenuItem placeholder — working fine" });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+// Create one or multiple subscriptions
+exports.createSubscriptions = async (req, res) => {
+  try {
+    const data = req.body;
+
+    // Check if body is an array or a single object
+    const subscriptionsArray = Array.isArray(data) ? data : [data];
+
+    const createdSubscriptions = [];
+
+    for (let sub of subscriptionsArray) {
+      const { name, price, mealsIncluded, deliveryAddOn } = sub;
+
+      if (!name || !price || !mealsIncluded) {
+        return res.status(400).json({ message: "Missing required fields in one of the subscriptions" });
+      }
+
+      const newSub = new Subscription({
+        name,
+        price,
+        mealsIncluded,
+        deliveryAddOn: deliveryAddOn || 0
+      });
+
+      await newSub.save();
+      createdSubscriptions.push(newSub);
+    }
+
+    res.status(201).json({ message: "Subscriptions created successfully", subscriptions: createdSubscriptions });
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };
