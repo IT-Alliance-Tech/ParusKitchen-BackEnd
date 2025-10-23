@@ -1,20 +1,25 @@
 const Cart = require('../models/Cart');
 const Meal = require('../models/Meal');
+const SubscriptionPlan = require('../models/SubscriptionPlan');
 const Order = require('../models/Order');
 
 // Helper: recalc total
 function recalcTotal(cart) {
-  return cart.items.reduce((s, it) => s + (it.price * it.quantity), 0);
+  return cart.items.reduce((s, it) => s + it.price * it.quantity, 0);
 }
 
 // GET /api/cart  — get current user's cart
 exports.getCart = async (req, res) => {
   try {
     const userId = req.userId;
-    let cart = await Cart.findOne({ user: userId }).populate({
-      path: 'items.meal',
-      populate: { path: 'category', select: 'name' }
-    });
+    let cart = await Cart.findOne({ user: userId })
+      .populate({
+        path: 'items.meal',
+        populate: { path: 'category', select: 'name' }
+      })
+      .populate({
+        path: 'items.subscription'
+      });
     if (!cart) return res.json({ items: [], totalAmount: 0 });
     res.json(cart);
   } catch (err) {
@@ -22,53 +27,85 @@ exports.getCart = async (req, res) => {
   }
 };
 
-// POST /api/cart  — add item to cart (body: { meal: "<id>", quantity: number })
+// POST /api/cart  — add item to cart (body: { itemType: "meal"|"subscription", itemId, quantity })
 exports.addItemToCart = async (req, res) => {
   try {
     const userId = req.userId;
-    const { meal: mealId, quantity = 1 } = req.body;
-    if (!mealId) return res.status(400).json({ message: 'meal id required' });
+    const { itemType, itemId, quantity = 1 } = req.body;
 
-    const meal = await Meal.findById(mealId);
-    if (!meal) return res.status(404).json({ message: 'Meal not found' });
+    if (!itemType || !itemId) {
+      return res.status(400).json({ message: 'itemType and itemId required' });
+    }
+
+    let item;
+    if (itemType === 'meal') {
+      item = await Meal.findById(itemId);
+      if (!item) return res.status(404).json({ message: 'Meal not found' });
+    } else if (itemType === 'subscription') {
+      item = await SubscriptionPlan.findById(itemId);
+      if (!item) return res.status(404).json({ message: 'Subscription not found' });
+    } else {
+      return res.status(400).json({ message: 'Invalid itemType' });
+    }
 
     let cart = await Cart.findOne({ user: userId });
     if (!cart) cart = new Cart({ user: userId, items: [], totalAmount: 0 });
 
-    const idx = cart.items.findIndex(i => i.meal.toString() === mealId);
+    // Check if item already exists
+    const idx = cart.items.findIndex(i =>
+      (itemType === 'meal' && i.meal?.toString() === itemId) ||
+      (itemType === 'subscription' && i.subscription?.toString() === itemId)
+    );
+
     if (idx > -1) {
       // item exists -> increase quantity
       cart.items[idx].quantity += Number(quantity);
-      cart.items[idx].price = meal.price; // refresh snapshot price
+      cart.items[idx].price = item.price; // refresh snapshot price
     } else {
-      cart.items.push({ meal: mealId, quantity: Number(quantity), price: meal.price });
+      const newItem = { quantity: Number(quantity), price: item.price };
+      if (itemType === 'meal') newItem.meal = itemId;
+      if (itemType === 'subscription') newItem.subscription = itemId;
+      cart.items.push(newItem);
     }
 
     cart.totalAmount = recalcTotal(cart);
     await cart.save();
 
-    cart = await cart.populate({ path: 'items.meal', populate: { path: 'category', select: 'name' } });
+    cart = await cart
+      .populate({ path: 'items.meal', populate: { path: 'category', select: 'name' } })
+      .populate({ path: 'items.subscription' });
+
     res.json(cart);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-// PUT /api/cart  — update quantity for a meal (body: { meal: "<id>", quantity: n })
+// PUT /api/cart  — update quantity for a cart item (body: { itemType, itemId, quantity })
 exports.updateCartItem = async (req, res) => {
   try {
     const userId = req.userId;
-    const { meal: mealId, quantity } = req.body;
-    if (!mealId || typeof quantity !== 'number') return res.status(400).json({ message: 'meal and numeric quantity required' });
+    const { itemType, itemId, quantity } = req.body;
+
+    if (!itemType || !itemId || typeof quantity !== 'number') {
+      return res.status(400).json({ message: 'itemType, itemId, and numeric quantity required' });
+    }
 
     const cart = await Cart.findOne({ user: userId });
     if (!cart) return res.status(404).json({ message: 'Cart not found' });
 
-    const item = cart.items.find(i => i.meal.toString() === mealId);
+    const item = cart.items.find(i =>
+      (itemType === 'meal' && i.meal?.toString() === itemId) ||
+      (itemType === 'subscription' && i.subscription?.toString() === itemId)
+    );
+
     if (!item) return res.status(404).json({ message: 'Item not in cart' });
 
     if (quantity <= 0) {
-      cart.items = cart.items.filter(i => i.meal.toString() !== mealId);
+      cart.items = cart.items.filter(i =>
+        !((itemType === 'meal' && i.meal?.toString() === itemId) ||
+          (itemType === 'subscription' && i.subscription?.toString() === itemId))
+      );
     } else {
       item.quantity = quantity;
     }
@@ -76,33 +113,44 @@ exports.updateCartItem = async (req, res) => {
     cart.totalAmount = recalcTotal(cart);
     await cart.save();
 
-    const populated = await cart.populate({ path: 'items.meal', populate: { path: 'category', select: 'name' } });
+    const populated = await cart
+      .populate({ path: 'items.meal', populate: { path: 'category', select: 'name' } })
+      .populate({ path: 'items.subscription' });
+
     res.json(populated);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-// DELETE /api/cart/:id  — remove an item by meal id
+// DELETE /api/cart/:itemType/:itemId — remove a specific item
 exports.removeItem = async (req, res) => {
   try {
     const userId = req.userId;
-    const mealId = req.params.id;
+    const { itemType, itemId } = req.params;
+
     const cart = await Cart.findOne({ user: userId });
     if (!cart) return res.status(404).json({ message: 'Cart not found' });
 
-    cart.items = cart.items.filter(i => i.meal.toString() !== mealId);
+    cart.items = cart.items.filter(i =>
+      !((itemType === 'meal' && i.meal?.toString() === itemId) ||
+        (itemType === 'subscription' && i.subscription?.toString() === itemId))
+    );
+
     cart.totalAmount = recalcTotal(cart);
     await cart.save();
 
-    const populated = await cart.populate({ path: 'items.meal', populate: { path: 'category', select: 'name' } });
+    const populated = await cart
+      .populate({ path: 'items.meal', populate: { path: 'category', select: 'name' } })
+      .populate({ path: 'items.subscription' });
+
     res.json(populated);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-// DELETE /api/cart  — clear cart
+// DELETE /api/cart — clear cart
 exports.clearCart = async (req, res) => {
   try {
     const userId = req.userId;
@@ -113,7 +161,7 @@ exports.clearCart = async (req, res) => {
   }
 };
 
-// POST /api/cart/checkout  — create an order from the cart and clear the cart
+// POST /api/cart/checkout — create an order from the cart and clear the cart
 exports.checkout = async (req, res) => {
   try {
     const userId = req.userId;
@@ -122,7 +170,13 @@ exports.checkout = async (req, res) => {
     const cart = await Cart.findOne({ user: userId });
     if (!cart || !cart.items.length) return res.status(400).json({ message: 'Cart is empty' });
 
-    const orderItems = cart.items.map(i => ({ meal: i.meal, quantity: i.quantity, price: i.price }));
+    const orderItems = cart.items.map(i => ({
+      meal: i.meal,
+      subscription: i.subscription,
+      quantity: i.quantity,
+      price: i.price
+    }));
+
     const order = new Order({
       user: userId,
       items: orderItems,
@@ -133,7 +187,10 @@ exports.checkout = async (req, res) => {
     });
 
     await order.save();
-    await Order.populate(order, { path: 'items.meal', populate: { path: 'category', select: 'name' } });
+    await Order.populate(order, [
+      { path: 'items.meal', populate: { path: 'category', select: 'name' } },
+      { path: 'items.subscription' }
+    ]);
 
     // clear cart
     await Cart.findOneAndDelete({ user: userId });
@@ -143,4 +200,3 @@ exports.checkout = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
-

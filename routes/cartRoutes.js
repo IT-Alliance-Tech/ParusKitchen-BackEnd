@@ -3,22 +3,22 @@ const router = express.Router();
 const cartController = require('../controllers/cartController');
 const auth = require('../middleware/authMiddleware');
 
-// get cart
+// ✅ Get all cart items
 router.get('/', auth, cartController.getCart);
 
-// add item
+// ✅ Add an item (meal or subscription)
 router.post('/', auth, cartController.addItemToCart);
 
-// update item quantity
+// ✅ Update item quantity
 router.put('/', auth, cartController.updateCartItem);
 
-// remove by meal id
-router.delete('/:id', auth, cartController.removeItem);
+// ⚠️ Fixed: remove by both itemType and itemId
+router.delete('/:itemType/:itemId', auth, cartController.removeItem);
 
-// clear cart
+// ✅ Clear entire cart
 router.delete('/', auth, cartController.clearCart);
 
-// checkout (create order and clear cart)
+// ✅ Checkout (create order and clear cart)
 router.post('/checkout', auth, cartController.checkout);
 
 module.exports = router;
