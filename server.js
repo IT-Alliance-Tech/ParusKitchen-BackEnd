@@ -9,6 +9,21 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+
+const connectDB = async () => {
+  try {
+    await mongoose.connect(process.env.MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+});
+    console.log('✅ MongoDB connected');
+  } catch (error) {
+    console.error('❌ MongoDB connection error:', error);
+    process.exit(1);
+  }
+};
+connectDB().then(() => {
+
 // ====================== ROUTES ======================
 // Meals
 app.use('/api/meals', require('./routes/mealRoutes'));
@@ -37,11 +52,13 @@ app.use('/api/admin/subscriptions', require('./routes/adminSubscriptionRoutes'))
 // Frontend Subscriptions (for users)
 app.use('/api/subscriptions', require('./routes/subscriptionRoutes'));
 
+})
+
 // ====================== MONGODB CONNECTION ======================
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/paroose_kitchen';
-mongoose.connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => console.log('✅ Connected to MongoDB'))
-  .catch(err => console.error('❌ MongoDB connection error:', err));
+// const MONGO_URI = process.env.MONGO_URI;
+// mongoose.connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+//   .then(() => console.log('✅ Connected to MongoDB'))
+//   .catch(err => console.error('❌ MongoDB connection error:', err));
 
 // ====================== BASIC ROUTE ======================
 app.get('/', (req, res) => {
@@ -52,4 +69,6 @@ app.get('/', (req, res) => {
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
+  console.log("Connected DB:", mongoose.connection.name);
+
 });
