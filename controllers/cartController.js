@@ -8,18 +8,14 @@ function recalcTotal(cart) {
   return cart.items.reduce((s, it) => s + it.price * it.quantity, 0);
 }
 
-// GET /api/cart  — get current user's cart
+// GET /api/cart — get current user's cart
 exports.getCart = async (req, res) => {
   try {
     const userId = req.userId;
     let cart = await Cart.findOne({ user: userId })
-      .populate({
-        path: 'items.meal',
-        populate: { path: 'category', select: 'name' }
-      })
-      .populate({
-        path: 'items.subscription'
-      });
+      .populate({ path: 'items.meal', populate: { path: 'category', select: 'name' } })
+      .populate('items.subscription');
+
     if (!cart) return res.json({ items: [], totalAmount: 0 });
     res.json(cart);
   } catch (err) {
@@ -27,7 +23,7 @@ exports.getCart = async (req, res) => {
   }
 };
 
-// POST /api/cart  — add item to cart (body: { itemType: "meal"|"subscription", itemId, quantity })
+// POST /api/cart — add item to cart
 exports.addItemToCart = async (req, res) => {
   try {
     const userId = req.userId;
@@ -58,7 +54,6 @@ exports.addItemToCart = async (req, res) => {
     );
 
     if (idx > -1) {
-      // item exists -> increase quantity
       cart.items[idx].quantity += Number(quantity);
       cart.items[idx].price = item.price; // refresh snapshot price
     } else {
@@ -71,17 +66,17 @@ exports.addItemToCart = async (req, res) => {
     cart.totalAmount = recalcTotal(cart);
     await cart.save();
 
-    cart = await cart
+    const populated = await Cart.findById(cart._id)
       .populate({ path: 'items.meal', populate: { path: 'category', select: 'name' } })
-      .populate({ path: 'items.subscription' });
+      .populate('items.subscription');
 
-    res.json(cart);
+    res.json(populated);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-// PUT /api/cart  — update quantity for a cart item (body: { itemType, itemId, quantity })
+// PUT /api/cart — update quantity for a cart item
 exports.updateCartItem = async (req, res) => {
   try {
     const userId = req.userId;
@@ -113,9 +108,9 @@ exports.updateCartItem = async (req, res) => {
     cart.totalAmount = recalcTotal(cart);
     await cart.save();
 
-    const populated = await cart
+    const populated = await Cart.findById(cart._id)
       .populate({ path: 'items.meal', populate: { path: 'category', select: 'name' } })
-      .populate({ path: 'items.subscription' });
+      .populate('items.subscription');
 
     res.json(populated);
   } catch (err) {
@@ -140,9 +135,9 @@ exports.removeItem = async (req, res) => {
     cart.totalAmount = recalcTotal(cart);
     await cart.save();
 
-    const populated = await cart
+    const populated = await Cart.findById(cart._id)
       .populate({ path: 'items.meal', populate: { path: 'category', select: 'name' } })
-      .populate({ path: 'items.subscription' });
+      .populate('items.subscription');
 
     res.json(populated);
   } catch (err) {

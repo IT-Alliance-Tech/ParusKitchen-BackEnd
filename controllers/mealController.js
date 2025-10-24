@@ -4,6 +4,9 @@ const Category = require('../models/Category');
 
 // Get all meals (with optional category filter by id or name)
 exports.getMeals = async (req, res) => {
+
+  console.log("Mealllll");
+  
   try {
     const { category } = req.query;
     let filter = {};
