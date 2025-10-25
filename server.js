@@ -2,6 +2,10 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const dashboardRoutes = require('./routes/dashboardRoutes');
+
+
+
 
 const app = express();
 
@@ -25,6 +29,8 @@ const connectDB = async () => {
 connectDB().then(() => {
 
 // ====================== ROUTES ======================
+// Add this line before other routes
+app.use('/api/dashboard', dashboardRoutes);
 // Meals
 app.use('/api/meals', require('./routes/mealRoutes'));
 
