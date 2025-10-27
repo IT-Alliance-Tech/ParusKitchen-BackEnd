@@ -1,9 +1,10 @@
 const User = require('../models/User');
-const Subscription = require('../models/SubscriptionPlan'); // Assuming you have a Subscription model
+const SubscriptionPlan = require('../models/SubscriptionPlan');
+const UserSubscription = require('../models/UserSubscription');
 const Order = require('../models/Order');
 const Menu = require('../models/Meal');
 
-// Helper to calculate remaining days
+// Helper: Calculate remaining days
 function getRemainingDays(endDate) {
   const today = new Date();
   const end = new Date(endDate);
@@ -11,41 +12,43 @@ function getRemainingDays(endDate) {
   return diffTime > 0 ? Math.ceil(diffTime / (1000 * 60 * 60 * 24)) : 0;
 }
 
-// GET /dashboard/current-subscription
+// ✅ GET /dashboard/current-subscription
 exports.getCurrentSubscription = async (req, res) => {
   try {
     const userId = req.user._id || req.userId;
 
-    const subscription = await Subscription.findOne({ user: userId })
+    const subscription = await UserSubscription.findOne({ user: userId })
       .populate('plan');
 
-    if (!subscription) return res.status(404).json({ message: 'No active subscription found' });
+    if (!subscription)
+      return res.status(404).json({ message: 'No active subscription found' });
 
     res.json({
-      planName: subscription.plan.name,
+      planName: subscription.planName || subscription.plan?.name,
       startDate: subscription.startDate,
       endDate: subscription.endDate,
       remainingDays: getRemainingDays(subscription.endDate),
-      price: subscription.plan.price,
-      duration: subscription.plan.duration,
-      status: subscription.status
+      price: subscription.price,
+      duration: subscription.duration,
+      status: subscription.status,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-// GET /dashboard/upcoming-menu
+// ✅ GET /dashboard/upcoming-menu
 exports.getUpcomingMenu = async (req, res) => {
   try {
     const userId = req.user._id || req.userId;
-    const subscription = await Subscription.findOne({ user: userId }).populate('plan');
+    const subscription = await UserSubscription.findOne({ user: userId }).populate('plan');
 
-    if (!subscription) return res.status(404).json({ message: 'No subscription found' });
+    if (!subscription)
+      return res.status(404).json({ message: 'No active subscription found' });
 
     const menus = await Menu.find({
       date: { $gte: new Date() },
-      planType: subscription.plan.name
+      planType: subscription.planName || subscription.plan?.name,
     }).sort('date');
 
     res.json(menus);
@@ -54,12 +57,13 @@ exports.getUpcomingMenu = async (req, res) => {
   }
 };
 
-// POST /dashboard/subscription/pause
+// ✅ POST /dashboard/subscription/pause
 exports.pauseSubscription = async (req, res) => {
   try {
     const userId = req.user._id || req.userId;
-    const subscription = await Subscription.findOne({ user: userId });
-    if (!subscription) return res.status(404).json({ message: 'Subscription not found' });
+    const subscription = await UserSubscription.findOne({ user: userId });
+    if (!subscription)
+      return res.status(404).json({ message: 'Subscription not found' });
 
     subscription.status = 'paused';
     await subscription.save();
@@ -70,12 +74,13 @@ exports.pauseSubscription = async (req, res) => {
   }
 };
 
-// POST /dashboard/subscription/resume
+// ✅ POST /dashboard/subscription/resume
 exports.resumeSubscription = async (req, res) => {
   try {
     const userId = req.user._id || req.userId;
-    const subscription = await Subscription.findOne({ user: userId });
-    if (!subscription) return res.status(404).json({ message: 'Subscription not found' });
+    const subscription = await UserSubscription.findOne({ user: userId });
+    if (!subscription)
+      return res.status(404).json({ message: 'Subscription not found' });
 
     subscription.status = 'active';
     await subscription.save();
@@ -86,14 +91,15 @@ exports.resumeSubscription = async (req, res) => {
   }
 };
 
-// POST /dashboard/subscription/cancel
+// ✅ POST /dashboard/subscription/cancel
 exports.cancelSubscription = async (req, res) => {
   try {
     const userId = req.user._id || req.userId;
-    const subscription = await Subscription.findOne({ user: userId });
-    if (!subscription) return res.status(404).json({ message: 'Subscription not found' });
+    const subscription = await UserSubscription.findOne({ user: userId });
+    if (!subscription)
+      return res.status(404).json({ message: 'Subscription not found' });
 
-    subscription.status = 'canceled';
+    subscription.status = 'cancelled';
     await subscription.save();
 
     res.json({ status: subscription.status });
@@ -102,38 +108,43 @@ exports.cancelSubscription = async (req, res) => {
   }
 };
 
-// POST /dashboard/subscription/renew
+// ✅ POST /dashboard/subscription/renew
 exports.renewSubscription = async (req, res) => {
   try {
     const userId = req.user._id || req.userId;
-    const subscription = await Subscription.findOne({ user: userId });
-    if (!subscription) return res.status(404).json({ message: 'Subscription not found' });
+    const subscription = await UserSubscription.findOne({ user: userId }).populate('plan');
+    if (!subscription)
+      return res.status(404).json({ message: 'Subscription not found' });
+
+    const newStartDate = new Date();
+    const newEndDate = new Date(newStartDate);
+    newEndDate.setDate(newEndDate.getDate() + subscription.duration);
 
     subscription.status = 'active';
-    subscription.startDate = new Date();
-    subscription.endDate = new Date(new Date().setMonth(new Date().getMonth() + subscription.plan.duration));
+    subscription.startDate = newStartDate;
+    subscription.endDate = newEndDate;
     await subscription.save();
 
     res.json({
       status: subscription.status,
       startDate: subscription.startDate,
-      endDate: subscription.endDate
+      endDate: subscription.endDate,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-// GET /dashboard/invoices
+// ✅ GET /dashboard/invoices
 exports.getInvoices = async (req, res) => {
   try {
     const userId = req.user._id || req.userId;
     const orders = await Order.find({ user: userId }).sort('-createdAt');
 
-    const invoices = orders.map(order => ({
+    const invoices = orders.map((order) => ({
       date: order.createdAt,
       amount: order.totalAmount,
-      invoiceLink: `/invoices/${order._id}` // Adjust based on actual invoice storage
+      invoiceLink: `/invoices/${order._id}`,
     }));
 
     res.json(invoices);
@@ -142,7 +153,7 @@ exports.getInvoices = async (req, res) => {
   }
 };
 
-// PUT /dashboard/update-profile
+// ✅ PUT /dashboard/update-profile
 exports.updateProfile = async (req, res) => {
   try {
     const userId = req.user._id || req.userId;

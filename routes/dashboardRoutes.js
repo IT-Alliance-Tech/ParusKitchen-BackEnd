@@ -3,6 +3,7 @@ const router = express.Router();
 const dashboardController = require('../controllers/dashboardController');
 const auth = require('../middleware/authMiddleware');
 
+// Dashboard-related routes
 router.get('/current-subscription', auth, dashboardController.getCurrentSubscription);
 router.get('/upcoming-menu', auth, dashboardController.getUpcomingMenu);
 
