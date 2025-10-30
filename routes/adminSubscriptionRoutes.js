@@ -1,4 +1,4 @@
-// backend/routes/admin/adminSubscriptionRoutes.js
+// backend/routes/adminSubscriptionRoutes.js
 const express = require("express");
 const router = express.Router();
 const adminSubscriptionController = require("../controllers/adminSubscriptionController");
