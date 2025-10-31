@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const adminUserSubscriptionRoutes = require("./routes/adminUserSubscriptionRoutes");
-
+const superAdminRoutes = require("./routes/superAdminRoutes");
 
 
 
@@ -62,6 +62,10 @@ app.use('/api/admin/subscriptions', require('./routes/adminSubscriptionRoutes'))
 app.use('/api/subscriptions', require('./routes/subscriptionRoutes'));
 
 app.use("/api/admin/user-subscriptions", adminUserSubscriptionRoutes);
+
+
+app.use("/api/superadmin", superAdminRoutes);
+
 
 })
 
