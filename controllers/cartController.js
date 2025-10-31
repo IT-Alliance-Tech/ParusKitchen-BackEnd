@@ -33,33 +33,50 @@ exports.addItemToCart = async (req, res) => {
       return res.status(400).json({ message: 'itemType and itemId required' });
     }
 
+    // Validate ObjectId format early
+    if (typeof itemId !== 'string' || itemId.length !== 24) {
+      return res.status(400).json({ message: 'Invalid itemId format' });
+    }
+
     let item;
-    if (itemType === 'meal') {
+
+    // ✅ Correct lookup for Meal / Subscription
+    if (itemType === 'meal' || itemType === 'menu') {
       item = await Meal.findById(itemId);
-      if (!item) return res.status(404).json({ message: 'Meal not found' });
+      if (!item) {
+        return res.status(404).json({ message: 'Meal/Menu item not found' });
+      }
     } else if (itemType === 'subscription') {
       item = await SubscriptionPlan.findById(itemId);
-      if (!item) return res.status(404).json({ message: 'Subscription not found' });
+      if (!item) {
+        return res.status(404).json({ message: 'Subscription not found' });
+      }
     } else {
       return res.status(400).json({ message: 'Invalid itemType' });
     }
 
+    // ✅ Ensure cart exists
     let cart = await Cart.findOne({ user: userId });
     if (!cart) cart = new Cart({ user: userId, items: [], totalAmount: 0 });
 
-    // Check if item already exists
-    const idx = cart.items.findIndex(i =>
-      (itemType === 'meal' && i.meal?.toString() === itemId) ||
+    // ✅ Check if item already exists in cart
+    const existingIndex = cart.items.findIndex((i) =>
+      ((itemType === 'meal' || itemType === 'menu') && i.meal?.toString() === itemId) ||
       (itemType === 'subscription' && i.subscription?.toString() === itemId)
     );
 
-    if (idx > -1) {
-      cart.items[idx].quantity += Number(quantity);
-      cart.items[idx].price = item.price; // refresh snapshot price
+    if (existingIndex > -1) {
+      cart.items[existingIndex].quantity += Number(quantity);
+      cart.items[existingIndex].price = item.price; // refresh snapshot price
     } else {
-      const newItem = { quantity: Number(quantity), price: item.price };
-      if (itemType === 'meal') newItem.meal = itemId;
+      const newItem = {
+        quantity: Number(quantity),
+        price: item.price,
+      };
+
+      if (itemType === 'meal' || itemType === 'menu') newItem.meal = itemId;
       if (itemType === 'subscription') newItem.subscription = itemId;
+
       cart.items.push(newItem);
     }
 
@@ -72,7 +89,8 @@ exports.addItemToCart = async (req, res) => {
 
     res.json(populated);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('❌ Error adding to cart:', err);
+    res.status(500).json({ error: err.message, message: 'Failed to add to cart' });
   }
 };
 
@@ -90,7 +108,7 @@ exports.updateCartItem = async (req, res) => {
     if (!cart) return res.status(404).json({ message: 'Cart not found' });
 
     const item = cart.items.find(i =>
-      (itemType === 'meal' && i.meal?.toString() === itemId) ||
+      ((itemType === 'meal' || itemType === 'menu') && i.meal?.toString() === itemId) ||
       (itemType === 'subscription' && i.subscription?.toString() === itemId)
     );
 
@@ -98,7 +116,7 @@ exports.updateCartItem = async (req, res) => {
 
     if (quantity <= 0) {
       cart.items = cart.items.filter(i =>
-        !((itemType === 'meal' && i.meal?.toString() === itemId) ||
+        !(((itemType === 'meal' || itemType === 'menu') && i.meal?.toString() === itemId) ||
           (itemType === 'subscription' && i.subscription?.toString() === itemId))
       );
     } else {
@@ -128,7 +146,7 @@ exports.removeItem = async (req, res) => {
     if (!cart) return res.status(404).json({ message: 'Cart not found' });
 
     cart.items = cart.items.filter(i =>
-      !((itemType === 'meal' && i.meal?.toString() === itemId) ||
+      !(((itemType === 'meal' || itemType === 'menu') && i.meal?.toString() === itemId) ||
         (itemType === 'subscription' && i.subscription?.toString() === itemId))
     );
 
@@ -187,7 +205,6 @@ exports.checkout = async (req, res) => {
       { path: 'items.subscription' }
     ]);
 
-    // clear cart
     await Cart.findOneAndDelete({ user: userId });
 
     res.status(201).json(order);

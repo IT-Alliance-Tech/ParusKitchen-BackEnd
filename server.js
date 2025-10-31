@@ -3,6 +3,9 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const dashboardRoutes = require('./routes/dashboardRoutes');
+const adminUserSubscriptionRoutes = require("./routes/adminUserSubscriptionRoutes");
+
+
 
 
 
@@ -57,6 +60,8 @@ app.use('/api/admin/subscriptions', require('./routes/adminSubscriptionRoutes'))
 
 // Frontend Subscriptions (for users)
 app.use('/api/subscriptions', require('./routes/subscriptionRoutes'));
+
+app.use("/api/admin/user-subscriptions", adminUserSubscriptionRoutes);
 
 })
 
