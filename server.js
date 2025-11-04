@@ -34,6 +34,8 @@ connectDB().then(() => {
 // ====================== ROUTES ======================
 // Add this line before other routes
 app.use('/api/dashboard', dashboardRoutes);
+  // Auth (forgot/reset password)
+  app.use('/api/auth', require('./routes/authRoutes'));
 // Meals
 app.use('/api/meals', require('./routes/mealRoutes'));
 

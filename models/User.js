@@ -5,7 +5,10 @@ const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   phone: { type: String }, 
-  role: { type: String, enum: ["user", "admin","superadmin"], default: "user" }  
+  role: { type: String, enum: ["user", "admin","superadmin"], default: "user" },
+  // Fields for password reset flow
+  resetPasswordToken: { type: String },
+  resetPasswordExpires: { type: Date }
 }, 
 { timestamps: true });
 
